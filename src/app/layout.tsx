@@ -21,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${pressStart2P.variable}`}>
-      <body className="font-sans antialiased" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${pressStart2P.variable}`} suppressHydrationWarning>
+      <body className="font-sans antialiased">
         {children}
         <Toaster />
       </body>
