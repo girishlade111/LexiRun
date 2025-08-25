@@ -8,6 +8,7 @@ import { WordObject } from '@/components/game/word-object';
 import { TypingChallenge } from '@/components/game/typing-challenge';
 import { Scoreboard } from '@/components/game/scoreboard';
 import { Loader2, AlertTriangle, Play } from 'lucide-react';
+import { Scenery } from './scenery';
 
 interface Word {
   id: string;
@@ -39,15 +40,18 @@ export function GameClient() {
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   
   const gameAreaRef = useRef<HTMLDivElement>(null);
-  const [viewHeight, setViewHeight] = useState(0);
+  const [viewSize, setViewSize] = useState({width: 0, height: 0});
   const gameLoopRef = useRef<number>();
 
-  const groundY = viewHeight > 0 ? viewHeight - PLAYER_HEIGHT : 0;
+  const groundY = viewSize.height > 0 ? viewSize.height - PLAYER_HEIGHT : 0;
   
   useEffect(() => {
     const updateLayout = () => {
       if (gameAreaRef.current) {
-        setViewHeight(gameAreaRef.current.clientHeight);
+        setViewSize({
+          width: gameAreaRef.current.clientWidth,
+          height: gameAreaRef.current.clientHeight
+        });
       }
     };
     updateLayout();
@@ -56,7 +60,7 @@ export function GameClient() {
   }, []);
 
   const fetchWords = useCallback(async () => {
-    if (viewHeight === 0) return; // Don't fetch if layout is not ready
+    if (viewSize.height === 0) return; // Don't fetch if layout is not ready
     setGameState('loading');
     try {
       const numberOfWords = 5 + Math.floor(score / 100);
@@ -74,13 +78,13 @@ export function GameClient() {
       console.error(e);
       setGameState('error');
     }
-  }, [score, viewHeight]);
+  }, [score, viewSize.height]);
 
   useEffect(() => {
-    if (viewHeight > 0) {
+    if (viewSize.height > 0) {
       fetchWords();
     }
-  }, [viewHeight]); // Initial fetch when viewHeight is known
+  }, [viewSize.height]); // Initial fetch when viewHeight is known
 
   const resetPlayer = useCallback(() => {
     if (groundY > 0) {
@@ -91,13 +95,13 @@ export function GameClient() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (gameState !== 'typing' && ['w', 'a', 'd', 's'].includes(e.key.toLowerCase())) {
+      if (gameState !== 'typing' && ['w', 'a', 'd', 's', ' '].includes(e.key.toLowerCase())) {
         e.preventDefault();
       }
       keysPressed.current[e.key.toLowerCase()] = true;
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (gameState !== 'typing' && ['w', 'a', 'd', 's'].includes(e.key.toLowerCase())) {
+      if (gameState !== 'typing' && ['w', 'a', 'd', 's', ' '].includes(e.key.toLowerCase())) {
         e.preventDefault();
       }
       keysPressed.current[e.key.toLowerCase()] = false;
@@ -165,6 +169,7 @@ export function GameClient() {
 
   useEffect(() => {
     if (gameState === 'playing') {
+      resetPlayer();
       gameLoopRef.current = requestAnimationFrame(gameLoop);
     } else {
       if (gameLoopRef.current) {
@@ -174,7 +179,7 @@ export function GameClient() {
     return () => {
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     }
-  }, [gameState, gameLoop]);
+  }, [gameState, gameLoop, resetPlayer]);
   
   const handleTypingSuccess = (word: ActiveWord, timeBonus: number) => {
     const points = Math.max(10, Math.floor(word.text.length * 5 + timeBonus));
@@ -199,8 +204,11 @@ export function GameClient() {
   };
 
   const startGame = () => {
-    resetPlayer();
-    setGameState('playing');
+    setScore(0);
+    setWords([]);
+    fetchWords().then(() => {
+        setGameState('playing');
+    });
   };
   
   const nextLevel = () => {
@@ -208,12 +216,12 @@ export function GameClient() {
     resetPlayer();
   }
   
-  const cameraX = viewHeight > 0 ? Math.max(0, Math.min(playerPosition.x - window.innerWidth / 2, WORLD_WIDTH - window.innerWidth)) : 0;
+  const cameraX = viewSize.width > 0 ? Math.max(0, Math.min(playerPosition.x - viewSize.width / 2, WORLD_WIDTH - viewSize.width)) : 0;
   
   return (
-    <div ref={gameAreaRef} className="w-full h-full bg-background overflow-hidden relative border-4 border-primary/20 rounded-lg shadow-2xl">
+    <div ref={gameAreaRef} className="w-full h-full bg-sky-100 dark:bg-gray-900 overflow-hidden relative border-4 border-primary/20 rounded-lg shadow-2xl">
       <AnimatePresence>
-        {(gameState === 'loading' || viewHeight === 0) && (
+        {(gameState === 'loading' || viewSize.height === 0) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center z-50">
             <Loader2 className="w-16 h-16 animate-spin text-primary" />
             <p className="mt-4 text-lg font-semibold">Loading LexiRun...</p>
@@ -245,9 +253,9 @@ export function GameClient() {
           className="h-full relative"
           style={{ width: WORLD_WIDTH }}
           animate={{ x: -cameraX }}
-          transition={{ duration: 0.5, ease: 'linear' }}
+          transition={{ duration: 0.2, ease: 'linear' }}
         >
-          <div className="absolute bottom-0 left-0 w-full h-12 bg-green-200/20 dark:bg-yellow-200/5" style={{top: groundY + PLAYER_HEIGHT - 12}}/>
+          <Scenery cameraX={cameraX} worldHeight={viewSize.height} groundY={groundY} />
           <Player position={playerPosition} isDucking={keysPressed.current['s']} />
           {words.map(word => (
             <WordObject key={word.id} word={{...word, y: groundY + word.yOffset}} />
