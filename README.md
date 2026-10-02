@@ -39,3 +39,7 @@ LexiRun is more than just a typing test. It's an adventure where your keyboard i
 7.  **Next Level:** Once you clear all the words, you can proceed to the next level with a new set of words.
 
 Have fun, and may your fingers be swift!
+
+---
+
+Built by Girish Lade — https://ladestack.in
